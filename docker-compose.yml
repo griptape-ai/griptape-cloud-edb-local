@@ -1,0 +1,80 @@
+version: "3"
+name: griptape
+services:
+  web:
+    read_only: False
+    image: griptape-web
+    environment:
+      - DISABLE_AUTH=${DISABLE_AUTH:-False}
+      - DATADOG_ENABLED=${DATADOG_ENABLED:-False}
+    depends_on:
+      - release
+      - redis
+    ports:
+      - "${WEB_API_PORT}:${PORT}"
+      - "${WEB_FRONTEND_PORT}:5173"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file: .env
+  workers:
+    read_only: False
+    image: griptape-workers
+    environment:
+      - DATADOG_ENABLED=${DATADOG_ENABLED:-False}
+    depends_on:
+      - release
+      - redis
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file: .env
+  scheduler:
+    read_only: False
+    image: griptape-scheduler
+    environment:
+      - DATADOG_ENABLED=${DATADOG_ENABLED:-False}
+    depends_on:
+      - release
+      - redis
+    env_file: .env
+    restart: on-failure:3
+  release:
+    read_only: False
+    image: griptape-release
+    environment:
+      - DATADOG_ENABLED=${DATADOG_ENABLED:-False}
+    depends_on:
+      - postgres
+      - pgvector
+    env_file: .env
+  postgres:
+    read_only: false
+    image: postgres:16@sha256:6b841c8f6a819884207402f1209a8116844365df15fca8cf556fc54a24c70800
+    hostname: $RESOURCE_DB_HOSTNAME
+    ports:
+      - "54320:${RESOURCE_DB_PORT}"
+    env_file: .env
+    environment:
+      POSTGRES_USER: $RESOURCE_DB_USER
+      POSTGRES_PASSWORD: $RESOURCE_DB_PASSWORD
+      POSTGRES_DB: $RESOURCE_DB
+  pgvector:
+    read_only: false
+    image: pgvector/pgvector:pg16@sha256:97293194fca020b1db13d5957fff318780c43b6ef898540ff4b67b2b6524bd6b
+    hostname: $VECTOR_DB_HOSTNAME
+    ports:
+      - "54321:${VECTOR_DB_PORT}"
+    env_file: .env
+    environment:
+      POSTGRES_USER: $VECTOR_DB_USER
+      POSTGRES_PASSWORD: $VECTOR_DB_PASSWORD
+      POSTGRES_DB: $VECTOR_DB
+  redis:
+    read_only: false
+    image: redis:7-alpine@sha256:7635b0bfdd7dd8552b4b31d6541fef07b734614045b45a52fd5cc27c9dada9e2
+    hostname: $REDIS_HOSTNAME
+    ports:
+      - "${REDIS_PORT}"
+    command: redis-server --save 20 1 --loglevel $REDIS_LOG_LEVEL --requirepass $REDIS_PASSWORD
+    env_file: .env
+volumes:
+  redis_data:
