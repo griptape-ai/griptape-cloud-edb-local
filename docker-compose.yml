@@ -10,6 +10,7 @@ services:
     depends_on:
       - release
       - redis
+      - minio
     ports:
       - "${WEB_API_PORT}:${PORT}"
       - "${WEB_FRONTEND_PORT}:5173"
@@ -24,6 +25,7 @@ services:
     depends_on:
       - release
       - redis
+      - minio
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     env_file: .env
@@ -35,6 +37,7 @@ services:
     depends_on:
       - release
       - redis
+      - minio
     env_file: .env
     restart: on-failure:3
   release:
@@ -45,6 +48,7 @@ services:
     depends_on:
       - postgres
       - pgvector
+      - minio
     env_file: .env
   postgres:
     read_only: false
@@ -76,5 +80,18 @@ services:
       - "${REDIS_PORT}"
     command: redis-server --save 20 1 --loglevel $REDIS_LOG_LEVEL --requirepass $REDIS_PASSWORD
     env_file: .env
+  minio:
+    read_only: false
+    image: docker.io/bitnami/minio@sha256:ba9f3b4b0b008de80b7d1d7a26c336fed3141ddf47788b7a790fc66292132e21
+    hostname: ${MINIO_HOSTNAME:-minio}
+    ports:
+      - "${MINIO_API_PORT_NUMBER:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT_NUMBER:-9001}:9001"
+    env_file: .env
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_SERVER_ACCESS_KEY=${MINIO_SERVER_ACCESS_KEY:-minioadmin}
+      - MINIO_SERVER_SECRET_KEY=${MINIO_SERVER_SECRET_KEY:-minioadmin}
 volumes:
   redis_data:
